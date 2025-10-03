@@ -29,3 +29,13 @@ Route::middleware('auth:api')->group(function(){
         return 3;
     });
 });
+Route::middleware('auth:api','role:admin')->group(function(){
+    Route::get('/admin',function(){
+        return 'Solo admin puede ver esto';
+    });
+});
+Route::middleware('auth:api','role:user')->group(function(){
+    Route::get('/user',function(){
+        return 'Solo user puede ver esto';
+    });
+});

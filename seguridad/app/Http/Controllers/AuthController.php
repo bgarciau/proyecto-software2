@@ -32,6 +32,7 @@ class AuthController extends Controller
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'password' => bcrypt($request->input('password')),
+            'role_id' => 2 // Asigna el rol por defecto (2 = usuario normal
         ]);
         return response()->json([
             'message' => 'Usuario registrado exitosamente',
