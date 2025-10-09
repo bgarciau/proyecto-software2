@@ -27,6 +27,8 @@ Route::post('/forgotpassword', [AuthController::class, 'forgotPassword']);
 Route::post('/resetpassword', [AuthController::class, 'resetPassword']);
 Route::middleware('auth:api')->group(function(){
     Route::post('/logout',[AuthController::class,'logout']);
+    Route::get('/profile', [UserController::class, 'profile']); // Ver perfil propio
+    Route::put('/profile', [UserController::class, 'updateProfile']); // Editar perfil propio
     Route::get('/',function(){
         return 3;
     });
@@ -40,11 +42,11 @@ Route::middleware('auth:api','role:admin')->group(function(){
     Route::get('/users/{id}', [UserController::class, 'show']); // Ver usuario
     Route::put('/users/{id}', [UserController::class, 'update']); // Editar usuario
     Route::delete('/users/{id}', [UserController::class, 'destroy']); // Eliminar usuario
+  
 });
 Route::middleware('auth:api','role:user')->group(function(){
     Route::get('/user',function(){
         return 'Solo user puede ver esto';
     });
-     Route::get('/profile', [UserController::class, 'profile']); // Ver perfil propio
-    Route::put('/profile', [UserController::class, 'updateProfile']); // Editar perfil propio
+   
 });

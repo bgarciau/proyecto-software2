@@ -1,14 +1,30 @@
 from flask import Flask, jsonify, request
-import math
 from pymongo import MongoClient
 from bson import ObjectId
 from datetime import datetime
+import requests
 
 app = Flask(__name__)
 client=MongoClient("mongodb://localhost:27017/")
 db = client ['microservicio']
 productos_collection = db["productos"]
 transacciones_collection = db["transacciones"]
+
+LARAVEL_API_URL = "http://localhost:8000/api"
+
+def verificar_usuario(token):
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json"
+    }
+    resp = requests.get(f"{LARAVEL_API_URL}/profile", headers=headers)
+    if resp.status_code != 200:
+        return None
+    usuario = resp.json()
+    # Verifica si el usuario es admin (ajusta el campo según tu modelo)
+    if usuario.get("role_id") == 1:  # Suponiendo que 1 es admin
+        return usuario
+    return None
 
 # Serializador para ObjectId
 def serialize_producto(producto):
@@ -23,13 +39,13 @@ def serialize_producto(producto):
 def serialize_transaccion(transaccion):
     return {
         "_id": str(transaccion["_id"]),
-        "producto_id": str(transaccion["producto_id"]),
-        "usuario_id": transaccion.get("usuario_id"),
         "tipo": transaccion["tipo"],
+        "usuario_id": transaccion["usuario_id"],
+        "producto_id": str(transaccion["producto_id"]),
         "cantidad": transaccion["cantidad"],
-        "total": transaccion["total"],
-        "estado": transaccion["estado"],
-        "fecha": transaccion["fecha"].strftime("%Y-%m-%d %H:%M:%S")
+        "direccion_entrega": transaccion.get("direccion_entrega"),
+        "monto_total": transaccion["monto_total"],
+        "fecha": transaccion["fecha"]
     }
 
 @app.route("/")
@@ -40,6 +56,13 @@ def home():
 # CREATE - Crear un producto
 @app.route("/productos", methods=["POST"])
 def crear_producto():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     data = request.get_json()
     if not data.get("nombre") or not data.get("precio") or not data.get("stock"):
         return jsonify({"error": "Debe enviar nombre, precio y stock"}), 400
@@ -51,17 +74,31 @@ def crear_producto():
         "stock": int(data["stock"])
     }
     result = productos_collection.insert_one(producto)
-    return jsonify({"mensaje": "Producto creado correctamente", "id": str(result.inserted_id)}), 201
+    return jsonify({"mensaje": "Producto creado correctamente", "id": str(result.inserted_id),"nombre": producto["nombre"]}), 201
 
 # READ - Listar todos los productos
 @app.route("/productos", methods=["GET"])
 def listar_productos():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     productos = productos_collection.find()
     return jsonify([serialize_producto(p) for p in productos])
 
 # READ - Obtener un producto por ID
 @app.route("/productos/<id>", methods=["GET"])
 def obtener_producto(id):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     producto = productos_collection.find_one({"_id": ObjectId(id)})
     if not producto:
         return jsonify({"error": "Producto no encontrado"}), 404
@@ -70,6 +107,13 @@ def obtener_producto(id):
 # UPDATE - Actualizar un producto
 @app.route("/productos/<id>", methods=["PUT"])
 def actualizar_producto(id):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     data = request.get_json()
     update_data = {}
     if "nombre" in data: update_data["nombre"] = data["nombre"]
@@ -86,6 +130,13 @@ def actualizar_producto(id):
 # DELETE - Eliminar un producto
 @app.route("/productos/<id>", methods=["DELETE"])
 def eliminar_producto(id):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     result = productos_collection.delete_one({"_id": ObjectId(id)})
     if result.deleted_count == 0:
         return jsonify({"error": "Producto no encontrado"}), 404
@@ -96,6 +147,13 @@ def eliminar_producto(id):
 # Crear una transacción (venta o pedido)
 @app.route("/transacciones", methods=["POST"])
 def crear_transaccion():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     data = request.get_json()
     tipo = data.get("tipo")
 
@@ -141,12 +199,26 @@ def crear_transaccion():
 # Listar todas las transacciones
 @app.route("/transacciones", methods=["GET"])
 def listar_transacciones():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     transacciones = transacciones_collection.find()
     return jsonify([serialize_transaccion(t) for t in transacciones])
 
 # Obtener una transacción por ID
 @app.route("/transacciones/<id>", methods=["GET"])
 def obtener_transaccion(id):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     transaccion = transacciones_collection.find_one({"_id": ObjectId(id)})
     if not transaccion:
         return jsonify({"error": "Transacción no encontrada"}), 404
@@ -155,6 +227,13 @@ def obtener_transaccion(id):
 # Eliminar una transacción
 @app.route("/transacciones/<id>", methods=["DELETE"])
 def eliminar_transaccion(id):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Token requerido"}), 401
+    token = auth_header.split(" ")[1]
+    usuario = verificar_usuario(token)
+    if not usuario:
+        return jsonify({"error": "No autorizado"}), 403
     result = transacciones_collection.delete_one({"_id": ObjectId(id)})
     if result.deleted_count == 0:
         return jsonify({"error": "Transacción no encontrada"}), 404
