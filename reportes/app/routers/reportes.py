@@ -11,7 +11,6 @@ router = APIRouter(prefix="/reportes", tags=["Reportes"])
 @router.get("/usuarios/pdf")
 async def reporte_usuarios_pdf(request: Request):
     token = request.headers.get("Authorization")
-    print("token:", token)
     if not token or not token.startswith("Bearer "):
         return Response("Token no proporcionado", status_code=401)
     token = token.split(" ")[1]
@@ -92,7 +91,7 @@ async def reporte_productos_excel():
 @router.get("/transacciones/pdf")
 async def reporte_transacciones_pdf():
     transacciones = await get_transacciones()
-    buffer = generar_pdf(transacciones, "Reporte de Transacciones")
+    # buffer = generar_pdf(transacciones, "Reporte de Transacciones")
     # return Response(
     #     buffer.getvalue(),
     #     media_type="application/pdf",
