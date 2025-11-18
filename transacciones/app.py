@@ -1,11 +1,12 @@
+import os
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
 from bson import ObjectId
 from datetime import datetime
 
 app = Flask(__name__)
-client=MongoClient("mongodb://localhost:27017/")
-db = client ['microservicio']
+client = MongoClient(os.getenv("MONGO_URI", "mongodb://mongo:27017/"))
+db = client['microservicio_transacciones']
 transacciones_collection = db["transacciones"]
 
 
@@ -85,4 +86,4 @@ def eliminar_transaccion(id):
     return jsonify({"mensaje": "Transacción eliminada correctamente"})
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(host="0.0.0.0", port=5001, debug=True)

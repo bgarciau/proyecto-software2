@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  transacciones:
+    build: .
+    container_name: flask_transacciones
+    ports:
+      - "5001:5001"
+    environment:
+      - MONGO_URI=mongodb://mongo_transacciones:27017/microservicio_transacciones
+      - FLASK_ENV=development
+    depends_on:
+      - mongo_transacciones
+    restart: always
+
+  mongo_transacciones:
+    image: mongo:6.0
+    container_name: mongo_transacciones
+    restart: always
+    ports:
+      - "27018:27017"   # usa un puerto externo distinto para no chocar con el otro Mongo
+    volumes:
+      - mongo_transacciones_data:/data/db
+
+volumes:
+  mongo_transacciones_data:

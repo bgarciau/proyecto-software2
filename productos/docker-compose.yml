@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  productos:
+    build: .
+    container_name: flask_productos
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/microservicio
+      - FLASK_ENV=development
+    depends_on:
+      - mongo
+    restart: always
+
+  mongo:
+    image: mongo:6.0
+    container_name: mongo_db
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

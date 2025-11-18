@@ -1,0 +1,182 @@
+version: "3.9"
+
+services:
+  # ======================================================
+  # MONGO PARA PRODUCTOS
+  # ======================================================
+  mongo_productos:
+    image: mongo:7
+    container_name: mongo_productos
+    command: ["mongod", "--bind_ip_all"]
+    volumes:
+      - mongo_productos_data:/data/db
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.10
+
+  productos:
+    build: ./productos
+    container_name: productos
+    environment:
+      MONGO_URI: mongodb://172.20.0.10:27017/
+      MONGO_DB: productos_db
+    ports:
+      - "5000:5000"     # 👈 AHORA SÍ accesible desde host
+    depends_on:
+      - mongo_productos
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.11
+
+  # ======================================================
+  # MICROSERVICIO DE REPORTES (SIN BD, SOLO CONSUME APIs)
+  # ======================================================
+  reportes:
+    build: ./reportes
+    container_name: reportes
+    ports:
+      - "8002:8002"
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.30
+
+
+  # ======================================================
+  # MONGO PARA TRANSACCIONES
+  # ======================================================
+  mongo_transacciones:
+    image: mongo:7
+    container_name: mongo_transacciones
+    command: ["mongod", "--bind_ip_all"]
+    volumes:
+      - mongo_transacciones_data:/data/db
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.20
+
+  transacciones:
+    build: ./transacciones
+    container_name: transacciones
+    environment:
+      MONGO_URI: mongodb://172.20.0.20:27017/
+      MONGO_DB: transacciones_db
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongo_transacciones
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.21
+
+
+  # ======================================================
+  # MYSQL PARA SEGURIDAD
+  # ======================================================
+  mysql_seguridad:
+    image: mysql:8.0
+    container_name: mysql_seguridad
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: seguridad
+    volumes:
+      - mysql_seguridad_data:/var/lib/mysql
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.40
+    ports:
+      - "3307:3306"
+    
+  seguridad:
+    build: ./seguridad-usuarios
+    container_name: seguridad
+    environment:
+      APP_NAME: Seguridad
+      DB_HOST: mysql_seguridad
+      DB_PORT: 3306
+      DB_DATABASE: seguridad
+      DB_USERNAME: root
+      DB_PASSWORD: root
+    ports:
+      - "9001:80"
+    depends_on:
+      - mysql_seguridad
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.41
+
+
+  # ======================================================
+  # MYSQL PARA USUARIOS (MISMO CÓDIGO LARAVEL)
+  # ======================================================
+  mysql_usuarios:
+    image: mysql:8.0
+    container_name: mysql_usuarios
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: usuarios
+    volumes:
+      - mysql_usuarios_data:/var/lib/mysql
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.50
+    ports:
+      - "3308:3306"
+
+  usuarios:
+    build: ./seguridad-usuarios
+    container_name: usuarios
+    environment:
+      APP_NAME: Usuarios
+      DB_HOST: mysql_usuarios
+      DB_PORT: 3306
+      DB_DATABASE: usuarios
+      DB_USERNAME: root
+      DB_PASSWORD: root
+    ports:
+      - "9002:80"
+    depends_on:
+      - mysql_usuarios
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.42
+
+
+  # ======================================================
+  # GATEWAY
+  # ======================================================
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8080:80"
+    environment:
+      MS_PRODUCTOS:     http://172.20.0.11:5000
+      MS_REPORTES:      http://172.20.0.30:8002
+      MS_TRANSACCIONES: http://172.20.0.21:5001
+      MS_SEGURIDAD:     http://172.20.0.41:80
+      MS_USUARIOS:      http://172.20.0.42:80    
+    depends_on:
+      - productos
+      - reportes
+      - transacciones
+      - seguridad
+      - usuarios
+    networks:
+      micro_net:
+        ipv4_address: 172.20.0.100
+
+
+networks:
+  micro_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  mongo_productos_data:
+  mongo_transacciones_data:
+  mysql_seguridad_data:
+  mysql_usuarios_data:
+
+

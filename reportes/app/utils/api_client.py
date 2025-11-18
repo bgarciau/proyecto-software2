@@ -1,9 +1,13 @@
 import httpx
 
 # URLs de tus otros microservicios (ajusta los puertos y rutas según tu entorno)
-LARAVEL_API_URL = "http://localhost:8000/api"  # usuarios
-FLASK_API_URL = "http://localhost:5000"    # productos
-FLASK_API_URL2 = "http://localhost:5001"   # transacciones
+LARAVEL_API_URL = "http://usuarios/api" 
+FLASK_API_URL = "http://productos:5000"
+FLASK_API_URL2 = "http://transacciones:5001"
+
+# LARAVEL_API_URL = "http://gateway/usuarios"
+# FLASK_API_URL = "http://gateway/productos"
+# FLASK_API_URL2 = "http://gateway/transacciones"
 
 
 
