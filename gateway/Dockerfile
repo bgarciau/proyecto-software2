@@ -3,6 +3,13 @@ FROM php:8.2-apache
 # Habilitar mod_rewrite (Laravel lo necesita)
 RUN a2enmod rewrite
 
+# HABILITAR HEADERS → NECESARIO PARA Authorization
+RUN a2enmod headers
+
+# Permitir que Apache reenvíe Authorization a PHP
+RUN echo "SetEnvIf Authorization \"(.*)\" HTTP_AUTHORIZATION=\$1" >> /etc/apache2/apache2.conf
+RUN echo "RequestHeader set Authorization \"%{HTTP_AUTHORIZATION}e\"" >> /etc/apache2/apache2.conf
+
 # Deshabilitar módulos problemáticos para evitar error de chunked-encoding
 RUN a2dismod deflate || true
 RUN a2dismod filter || true
